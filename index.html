@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>AI Interview Assistant</title>
+
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      color: white;
+      margin: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+
+    .container {
+      background: rgba(255,255,255,0.1);
+      backdrop-filter: blur(12px);
+      padding: 30px;
+      border-radius: 20px;
+      width: 520px;
+      text-align: center;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.3);
+    }
+
+    select, button {
+      padding: 10px;
+      border-radius: 10px;
+      border: none;
+      margin: 10px;
+      font-size: 15px;
+    }
+
+    button {
+      background: #ff7b00;
+      color: white;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: #ff5500;
+    }
+
+    #question {
+      font-size: 20px;
+      margin: 20px 0;
+      min-height: 60px;
+    }
+
+    #status {
+      font-size: 14px;
+      white-space: pre-line;
+      text-align: left;
+    }
+
+    #progress {
+      font-size: 13px;
+      opacity: 0.8;
+    }
+
+    textarea {
+      width: 100%;
+      height: 70px;
+      border-radius: 10px;
+      padding: 10px;
+      border: none;
+      margin-top: 10px;
+    }
+
+    #feedbackBox {
+      display: none;
+      margin-top: 20px;
+    }
+  </style>
+</head>
+
+<body>
+
+<div class="container">
+  <h1>🎤 AI Interview Assistant</h1>
+
+  <select id="course">
+    <option>Computer Science</option>
+    <option>Information Technology</option>
+    <option>Electronics</option>
+    <option>Electrical</option>
+    <option>Mechanical</option>
+    <option>Civil</option>
+    <option>Aerospace</option>
+    <option>Automobile</option>
+    <option>Biotechnology</option>
+    <option>Chemical Engineering</option>
+    <option>Data Science</option>
+    <option>Artificial Intelligence</option>
+    <option>Cyber Security</option>
+    <option>Cloud Computing</option>
+    <option>DevOps</option>
+    <option>Blockchain</option>
+    <option>Software Engineering</option>
+    <option>Web Development</option>
+    <option>Mobile App Development</option>
+    <option>Business Administration</option>
+    <option>Finance</option>
+    <option>Marketing</option>
+    <option>Human Resources</option>
+    <option>Law</option>
+    <option>Medical</option>
+    <option>Nursing</option>
+    <option>Pharmacy</option>
+    <option>Architecture</option>
+    <option>Arts</option>
+    <option>Psychology</option>
+    <option>Education</option>
+  </select>
+
+  <br>
+
+  <button onclick="startInterview()">Start Interview</button>
+
+  <div id="question"></div>
+  <div id="progress"></div>
+
+  <!-- TEXT INPUT -->
+  <textarea id="textAnswer" placeholder="Type your answer here..."></textarea>
+  <br>
+  <button onclick="submitTextAnswer()">Submit Answer</button>
+
+  <div id="status"></div>
+
+  <div id="feedbackBox">
+    <h3>Feedback ⭐</h3>
+    <textarea placeholder="Write your feedback..."></textarea>
+    <br>
+    <button onclick="submitFeedback()">Submit</button>
+  </div>
+</div>
+
+<script>
+
+let count = 0;
+let recognition;
+let started = false;
+let getQuestion;
+let scores = [];
+
+// 🔥 Question Generator
+function generateQuestions(course) {
+
+  function random(arr) {
+    return arr[Math.floor(Math.random() * arr.length)];
+  }
+
+  const topics = [
+    "core concepts","real-world applications","latest trends",
+    "industry challenges","tools and technologies",
+    "problem-solving methods","case studies","advanced concepts"
+  ];
+
+  const behavioral = [
+    "Tell me about a time you handled a difficult situation.",
+    "Describe a failure and what you learned.",
+    "How do you manage stress and deadlines?",
+    "Explain a leadership experience.",
+    "How do you handle criticism?",
+    "Describe a team conflict and resolution.",
+    "How do you prioritize work?",
+    "What motivates you?"
+  ];
+
+  const project = [
+    "Explain a project you worked on.",
+    "What challenges did you face?",
+    "How did you improve your project?",
+    "What technologies did you use?",
+    "What would you do differently?"
+  ];
+
+  const techTemplates = [
+    () => `Explain ${course} core concepts.`,
+    () => `How is ${course} used in real-world applications?`,
+    () => `What are current trends in ${course}?`,
+    () => `Explain a complex concept in ${course}.`,
+    () => `How do you solve problems in ${course}?`,
+    () => `What are major challenges in ${course}?`,
+    () => `Compare traditional vs modern approaches in ${course}.`,
+    () => `How will ${course} evolve in the future?`
+  ];
+
+  return function() {
+    let type = Math.floor(Math.random() * 3);
+    if (type === 0) return random(techTemplates)();
+    if (type === 1) return random(behavioral);
+    return random(project);
+  };
+}
+
+// 🎤 Speak
+function speak(text) {
+  const speech = new SpeechSynthesisUtterance(text);
+  speech.lang = "en-US";
+  window.speechSynthesis.speak(speech);
+}
+
+// 📊 Evaluate Answer
+function evaluateAnswer(answer) {
+
+  let score = 0;
+  let suggestions = [];
+
+  document.getElementById("status").innerText = "Your Answer:\n" + answer + "\n\n";
+
+  if (answer.length > 80) score += 30;
+  else suggestions.push("Give more detailed answers");
+
+  const fillers = ["um","uh","like","you know"];
+  let fillerCount = fillers.filter(f => answer.toLowerCase().includes(f)).length;
+
+  if (fillerCount === 0) score += 30;
+  else suggestions.push("Avoid filler words");
+
+  if (answer.split(" ").length > 10) score += 20;
+  else suggestions.push("Use complete sentences");
+
+  const strongWords = ["developed","led","created","improved","achieved"];
+  if (strongWords.some(w => answer.toLowerCase().includes(w))) score += 20;
+  else suggestions.push("Use strong action words");
+
+  scores.push(score);
+
+  let suggestionText = suggestions.length 
+    ? suggestions.join(", ") 
+    : "Good answer!";
+
+  document.getElementById("status").innerText +=
+    "Confidence Score: " + score + "%\nSuggestions: " + suggestionText;
+
+  speak("Your confidence score is " + score + " percent. " + suggestionText);
+}
+
+// ❓ Ask Question
+function askQuestion() {
+
+  if (count > 0 && count % 10 === 0) {
+    speak("Do you want to continue?");
+    document.getElementById("status").innerText = "Say YES or NO";
+    listenContinue();
+    return;
+  }
+
+  const q = getQuestion();
+  count++;
+
+  document.getElementById("question").innerText = q;
+  document.getElementById("progress").innerText = "Question " + count;
+
+  document.getElementById("textAnswer").value = "";
+
+  speak(q);
+  listenAnswer();
+}
+
+// 🎧 Voice Answer
+function listenAnswer() {
+  recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+
+  recognition.onresult = function(event) {
+    let answer = event.results[0][0].transcript;
+    evaluateAnswer(answer);
+    setTimeout(askQuestion, 2500);
+  };
+
+  recognition.start();
+}
+
+// 📝 Text Answer
+function submitTextAnswer() {
+  let answer = document.getElementById("textAnswer").value.trim();
+  if(answer === "") return alert("Please type your answer");
+
+  evaluateAnswer(answer);
+  setTimeout(askQuestion, 2000);
+}
+
+// 🔁 Continue
+function listenContinue() {
+  recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+
+  recognition.onresult = function(event) {
+    let res = event.results[0][0].transcript.toLowerCase();
+    if (res.includes("yes")) askQuestion();
+    else endInterview();
+  };
+
+  recognition.start();
+}
+
+// 🚀 Start
+function startInterview() {
+
+  if (!started) {
+    speak("Please introduce yourself.");
+    document.getElementById("question").innerText = "Please introduce yourself";
+
+    recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+
+    recognition.onresult = function(event) {
+      let intro = event.results[0][0].transcript;
+      document.getElementById("status").innerText = "Your Answer:\n" + intro;
+      beginMainInterview();
+    };
+
+    recognition.start();
+    started = true;
+  }
+}
+
+// ▶ Main
+function beginMainInterview() {
+  const course = document.getElementById("course").value;
+  getQuestion = generateQuestions(course);
+  count = 0;
+
+  speak("Starting your interview");
+  askQuestion();
+}
+
+// 🛑 End
+function endInterview() {
+
+  let avg = scores.reduce((a,b)=>a+b,0)/scores.length;
+
+  speak("Interview ended. Your average confidence score is " + Math.round(avg));
+
+  document.getElementById("status").innerText =
+    "Final Confidence Score: " + Math.round(avg) + "%";
+
+  document.getElementById("feedbackBox").style.display = "block";
+}
+
+// ⭐ Feedback
+function submitFeedback() {
+  alert("Thank you for your feedback!");
+}
+
+</script>
+
+</body>
+</html>
